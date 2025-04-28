@@ -40,6 +40,6 @@ async def austinOG():
 
     from shield.modules.site import app as flask_app
     import threading
-    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=5679)).start()
+    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=5683)).start()
 
 asyncio.get_event_loop().run_until_complete(austinOG())
