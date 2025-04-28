@@ -18,20 +18,97 @@ start_button = InlineKeyboardMarkup([
 ])
 
 
-@app.on_message(filters.command('start') & filters.private)
+# @app.on_message(filters.command('start') & filters.private)
+# async def startcmd(_, message: Message):
+#     user_id      = message.from_user.id
+#     user_mention = message.from_user.mention
+#     payload      = message.command[1] if len(message.command) > 1 else None
+
+#     if not payload or not payload.startswith('c'):
+#         await users.update_one(
+#             {"user_id": user_id},
+#             {"$set": {"user_id": user_id}},
+#             upsert=True
+#         )
+
+#         await message.reply_photo(
+#             config.START_IMG,
+#             caption=(
+#                 f"Hello {user_mention}, welcome to {app.me.mention}!\n\n"
+#                 "➻ Your ultimate tool for managing and protecting your Telegram spaces.\n"
+#                 "──────────────────\n"
+#                 "➻ Press 'Help' to discover all available features."
+#             ),
+#             reply_markup=start_button
+#         )
+#         return
+
+
+#     try:
+#         chan_short = int(payload[1:])
+#     except ValueError:
+#         return await message.reply_text("❌ Invalid link.")
+
+#     channel_id = int(f"-100{chan_short}")
+#     cfg = channel_configs.find_one({"channel_id": channel_id})
+#     if not cfg or not cfg.get("captcha_on", False):
+#         return await message.reply_text("⚠️ That channel is not currently protected.")
+
+#     now = datetime.utcnow()
+#     uid = hashlib.sha1(f"{now.timestamp()}_{user_id}_{channel_id}".encode()).hexdigest()
+#     entry = {
+#         "uid":         uid,
+#         "channel_id":  channel_id,
+#         "owner_id":    cfg["owner_id"],
+#         "requester":   user_id,
+#         "created_at":  now,
+#         "expires_at":  now + timedelta(hours=1),
+#         "used":        False,
+#         "invite_link": None
+#     }
+#     invite_requests.insert_one(entry)
+
+#     try:
+#         chat = await app.get_chat(channel_id)
+#         title = chat.title or str(channel_id)
+#     except Exception:
+#         title = str(channel_id)
+
+#     await app.send_message(
+#         cfg["owner_id"],
+#         (
+#             f"🔔 New access request for `{title}`\n"
+#             f"User: {message.from_user.mention}\n"
+#             f"EID: `{uid}`\n"
+#             f"Time: `{now.isoformat()}`"
+#         )
+#     )
+
+#     await message.reply_text(
+#         text=(
+#             "🔒 **Access Verification Required**\n\n"
+#             "To join, please complete the CAPTCHA below."
+#         ),
+#         reply_markup=InlineKeyboardMarkup([[
+#             InlineKeyboardButton("🔗 Verify Now", url=f"https://suized.to:5000/verify?uid={uid}")
+#         ]])
+#     )
+
+@app.on_message(filters.command("start") & filters.private)
 async def startcmd(_, message: Message):
     user_id      = message.from_user.id
     user_mention = message.from_user.mention
-    payload      = message.command[1] if len(message.command) > 1 else None
+    cmd_args     = message.command
+    payload      = cmd_args[1] if len(cmd_args) == 2 else None
 
-    if not payload or not payload.startswith('c'):
-        await users.update_one(
+
+    if not payload or not payload.startswith("c"):
+        users.update_one(
             {"user_id": user_id},
             {"$set": {"user_id": user_id}},
             upsert=True
         )
-
-        await message.reply_photo(
+        return await message.reply_photo(
             config.START_IMG,
             caption=(
                 f"Hello {user_mention}, welcome to {app.me.mention}!\n\n"
@@ -41,18 +118,23 @@ async def startcmd(_, message: Message):
             ),
             reply_markup=start_button
         )
-        return
-
 
     try:
         chan_short = int(payload[1:])
     except ValueError:
-        return await message.reply_text("❌ Invalid link.")
+        return await message.reply_text("❌ Invalid invite link.")
 
     channel_id = int(f"-100{chan_short}")
+
     cfg = channel_configs.find_one({"channel_id": channel_id})
     if not cfg or not cfg.get("captcha_on", False):
-        return await message.reply_text("⚠️ That channel is not currently protected.")
+        return await message.reply_text("⚠️ That handle is not currently protected.")
+
+    banned_ids = cfg.get("banned_tgids", [])
+    if user_id in banned_ids:
+        return await message.reply_text(
+            "🍑 **Fuck you** — you are banned from accessing this channel."
+        )
 
     now = datetime.utcnow()
     uid = hashlib.sha1(f"{now.timestamp()}_{user_id}_{channel_id}".encode()).hexdigest()
@@ -71,26 +153,28 @@ async def startcmd(_, message: Message):
     try:
         chat = await app.get_chat(channel_id)
         title = chat.title or str(channel_id)
-    except Exception:
+    except:
         title = str(channel_id)
 
     await app.send_message(
         cfg["owner_id"],
         (
-            f"🔔 New access request for `{title}`\n"
+            f"🔔 New access request for *{title}*\n"
             f"User: {message.from_user.mention}\n"
-            f"EID: `{uid}`\n"
+            f"Ray ID: `{uid}`\n"
             f"Time: `{now.isoformat()}`"
         )
     )
 
-    await message.reply_text(
-        text=(
+    verify_url = f"https://suized.to:5000/verify?uid={uid}"
+    await message.reply_photo(
+        photo=config.START_IMG,
+        caption=(
             "🔒 **Access Verification Required**\n\n"
             "To join, please complete the CAPTCHA below."
         ),
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔗 Verify Now", url=f"https://suized.to:5000/verify?uid={uid}")
+            InlineKeyboardButton("🔗 Verify Now", url=verify_url)
         ]])
     )
 
@@ -113,7 +197,7 @@ async def help_callback(_, query: CallbackQuery):
 async def privacy_policy(_, query: CallbackQuery):
     text = (
         "**Privacy Policy**\n\n"
-        "We respect your privacy and only store data necessary to operate the bot. "
+        "The bot itself dosn't intract with data posted in the channel, As we respect your privacy."
         "No personal data is shared or sold. By using the bot, you agree to this policy."
     )
 
