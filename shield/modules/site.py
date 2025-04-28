@@ -113,9 +113,10 @@ def verify_callback():
         return render_template_string(ERROR_TEMPLATE, error_message="This invitation has already been used."), 400
 
     try:
+        expiration_time = datetime.utcnow() + timedelta(hours=1)
         link = nigger.create_chat_invite_link(
             entry["channel_id"],
-            expire_date=int((datetime.utcnow()+timedelta(hours=1)).timestamp()),
+            expire_date=expiration_time,
             member_limit=1
         ).invite_link
 
@@ -128,15 +129,14 @@ def verify_callback():
         ip = request.remote_addr
         
         try:
-            mirza = nigger.get_user(requester)
+            mirza = nigger.get_users(requester)
             nigger.send_message(
                 entry["owner_id"],
                 f"✅ Request `{uid}` VERIFIED\n"
                 f"User: {mirza.mention}\n"
                 f"IP: `{ip}`\n"
                 f"Invite: `{link}`\n"
-                f"Time: {datetime.utcnow().isoformat()}",
-                parse_mode="markdown"
+                f"Time: {datetime.utcnow().isoformat()}"
             )
         except Exception as e:
             print(f"Error sending notification: {e}")

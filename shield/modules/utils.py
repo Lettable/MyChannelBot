@@ -25,7 +25,7 @@ async def trackEvent(client: Client, update: ChatMemberUpdated):
 
         info = await client.get_chat_member(chat.id, inviter.id)
         if info.status == enums.ChatMemberStatus.OWNER:
-            await channels.update_one(
+            channels.update_one(
                 {"chat_id": chat.id},
                 {"$set": {
                     "chat_id":   chat.id,
@@ -41,7 +41,7 @@ async def trackEvent(client: Client, update: ChatMemberUpdated):
 
     elif old.status == enums.ChatMemberStatus.ADMINISTRATOR and \
          new.status != enums.ChatMemberStatus.ADMINISTRATOR:
-        await channels.delete_one({"chat_id": chat.id})
+        channels.delete_one({"chat_id": chat.id})
         await app.send_message(
             config.LOG_ID,
             f"🗑️ Removed from channel `{chat.id}`"

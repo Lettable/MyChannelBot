@@ -1,12 +1,7 @@
-import certifi
-from motor.motor_asyncio import AsyncIOMotorClient
-import config
 
-mongo = AsyncIOMotorClient(
-    config.MONGO_DB_URI,
-    tls=True,
-    tlsAllowInvalidCertificates=True,
-    tlsAllowInvalidHostnames=True
-)
+import config
+from pymongo import MongoClient
+
+mongo = MongoClient(config.MONGO_DB_URI)
 
 db = mongo["MAIN"]

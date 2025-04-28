@@ -6,6 +6,7 @@ from shield.database import db
 
 channels = db["channels"]
 captcha = db["captcha"]
+channel_configs = db['channel_configs']
 
 @app.on_message(filters.private & filters.command("config"))
 async def config_handler(client: Client, message):
@@ -28,9 +29,11 @@ async def config_handler(client: Client, message):
     await message.reply_text("Select a channel to configure:", reply_markup=markup)
 
 
-@app.on_callback_query(filters.regex(r"^select_chat_(\d+)$"))
+@app.on_callback_query(filters.regex(r"^select_chat_(-?\d+)$"))
 async def select_chat(client: Client, query: CallbackQuery):
-    chat_id = int(query.data.split("_")[2])
+    await query.answer()
+    
+    chat_id = int(query.data.split("_", 2)[2])
     try:
         chat = await app.get_chat(chat_id)
         title = chat.title or str(chat.id)
@@ -46,9 +49,8 @@ async def select_chat(client: Client, query: CallbackQuery):
     ]
     markup = InlineKeyboardMarkup(buttons)
     await query.edit_message_text(
-        f"*Configure Captcha for:* __{title}__",
-        reply_markup=markup,
-        parse_mode="markdown"
+        f"Configure Captcha for: `{title}`",
+        reply_markup=markup
     )
 
 
@@ -57,36 +59,39 @@ async def back_to_config(client: Client, query: CallbackQuery):
     await config_handler(client, query.message)
 
 
-@app.on_callback_query(filters.regex(r"^captcha_on_(\d+)$"))
+@app.on_callback_query(filters.regex(r"^captcha_on_(-?\d+)$"))
 async def captcha_on(client: Client, query: CallbackQuery):
-    chat_id = int(query.data.split("_")[2])
+    chat_id = int(query.data.split("_", 2)[2])
     await captcha.update_one(
         {"channel_id": chat_id},
         {"$set": {"channel_id": chat_id, "captcha_on": True}},
         upsert=True
     )
+    channel_configs.update_one(
+        {"channel_id": chat_id},
+        {"$set": {"channel_id": chat_id, "owner_id": query.from_user.id, "captcha_on": True}},
+        upsert=True
+    )
     await query.answer("✅ Captcha enabled")
     await query.edit_message_text(
-        f"✅ Captcha has been *enabled* for __{(await app.get_chat(chat_id)).title or chat_id}__",
-        parse_mode="markdown"
+        f"✅ Captcha has been enabled for {(await app.get_chat(chat_id)).title or chat_id}"
     )
 
 
-@app.on_callback_query(filters.regex(r"^captcha_off_(\d+)$"))
+@app.on_callback_query(filters.regex(r"^captcha_off_(-?\d+)$"))
 async def captcha_off(client: Client, query: CallbackQuery):
-    chat_id = int(query.data.split("_")[2])
+    chat_id = int(query.data.split("_", 2)[2])
     await captcha.update_one(
         {"channel_id": chat_id},
         {"$set": {"channel_id": chat_id, "captcha_on": False}},
         upsert=True
     )
+    channel_configs.update_one(
+        {"channel_id": chat_id},
+        {"$set": {"captcha_on": False}},
+        upsert=True
+    )
     await query.answer("❌ Captcha disabled")
     await query.edit_message_text(
-        f"❌ Captcha has been *disabled* for __{(await app.get_chat(chat_id)).title or chat_id}__",
-        parse_mode="markdown"
+        f"❌ Captcha has been disabled for {(await app.get_chat(chat_id)).title or chat_id}"
     )
-
-
-
-
-
