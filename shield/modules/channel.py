@@ -3,6 +3,8 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQ
 import config
 from shield import app
 from shield.database import db
+import re
+import ipaddress
 
 channels = db["channels"]
 captcha = db["captcha"]
@@ -69,9 +71,9 @@ async def captcha_on(client: Client, query: CallbackQuery):
         upsert=True
     )
     await query.answer("✅ Captcha enabled")
-    await query.edit_message_text(
-        f"✅ Captcha has been enabled for {(await app.get_chat(chat_id)).title or chat_id}"
-    )
+    # await query.edit_message_text(
+    #     f"✅ Captcha has been enabled for {(await app.get_chat(chat_id)).title or chat_id}"
+    # )
 
 
 @app.on_callback_query(filters.regex(r"^captcha_off_(-?\d+)$"))
@@ -88,9 +90,9 @@ async def captcha_off(client: Client, query: CallbackQuery):
         upsert=True
     )
     await query.answer("❌ Captcha disabled")
-    await query.edit_message_text(
-        f"❌ Captcha has been disabled for {(await app.get_chat(chat_id)).title or chat_id}"
-    )
+    # await query.edit_message_text(
+    #     f"❌ Captcha has been disabled for {(await app.get_chat(chat_id)).title or chat_id}"
+    # )
 
 
 @app.on_callback_query(filters.regex(r"^dn_ya_(-?\d+)$"))
@@ -196,27 +198,68 @@ async def handle_admin_input(client, message: Message):
     state = admin_states.get(message.from_user.id)
     if not state:
         return
+
     action = state.get("action")
     chat_id = state.get("channel_id")
     lines = message.text.splitlines()
+
+    invalid_inputs = []
+
     if action in ("banned_ips_add", "banned_ips_append"):
+        valid_ips = []
+        for line in lines:
+            line = line.strip()
+            try:
+                ip = ipaddress.ip_address(line)
+                if ip.version == 4:
+                    valid_ips.append(str(ip))
+                else:
+                    invalid_inputs.append(line)
+            except ValueError:
+                invalid_inputs.append(line)
+
+        if not valid_ips:
+            await message.reply_text("🚫 You absolute donkey, you didn't even give a SINGLE valid IPv4 address. Try again, fuckface.")
+            return
+
         if action == "banned_ips_add":
-            new_list = lines
+            new_list = valid_ips
         else:
-            cfg = channel_configs.find_one({"channel_id": chat_id})
+            cfg = channel_configs.find_one({"channel_id": chat_id}) or {}
             old = cfg.get("banned_ips", [])
-            new_list = old + lines
+            new_list = old + valid_ips
+
         channel_configs.update_one({"channel_id": chat_id}, {"$set": {"banned_ips": new_list}}, upsert=True)
-        await message.reply_text("✅ Banned IPs updated.")
-        admin_states.pop(message.from_user.id, None)
+        await message.reply_text(f"✅ Banned IPs updated. {len(valid_ips)} added.")
+
     if action in ("banned_tgids_add", "banned_tgids_append"):
-        ids = [int(x) for x in lines if x.isdigit()]
+        valid_ids = []
+        for line in lines:
+            line = line.strip()
+            if line.isdigit() and 1 <= len(line) <= 15:
+                valid_ids.append(int(line))
+            else:
+                invalid_inputs.append(line)
+
+        if not valid_ids:
+            await message.reply_text("🚫 How the fuck did you manage to NOT send a SINGLE valid Telegram ID? Fix your life.")
+            return
+
         if action == "banned_tgids_add":
-            new_ids = ids
+            new_ids = valid_ids
         else:
-            cfg = channel_configs.find_one({"channel_id": chat_id})
+            cfg = channel_configs.find_one({"channel_id": chat_id}) or {}
             old = cfg.get("banned_tgids", [])
-            new_ids = old + ids
+            new_ids = old + valid_ids
+
         channel_configs.update_one({"channel_id": chat_id}, {"$set": {"banned_tgids": new_ids}}, upsert=True)
-        await message.reply_text("✅ Banned IDs updated.")
-        admin_states.pop(message.from_user.id, None)
+        await message.reply_text(f"✅ Banned IDs updated. {len(valid_ids)} added.")
+
+    if invalid_inputs:
+        msg = "**👿 Invalid Inputs Detected!**\n\n"
+        for trash in invalid_inputs:
+            msg += f"❌ `{trash}` — what the actual fuck is this?\n"
+        msg += "\n🔴 Send proper IPv4 addresses or numeric Telegram IDs, you walking brainfart."
+        await message.reply_text(msg)
+
+    admin_states.pop(message.from_user.id, None)

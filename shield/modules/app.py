@@ -126,14 +126,14 @@ async def startcmd(_, message: Message):
 
     channel_id = int(f"-100{chan_short}")
 
-    cfg = channel_configs.find_one({"channel_id": channel_id})
+    cfg = channel_configs.find_one({"channel_id": channel_id}) or {}
+    cfg.setdefault("banned_tgids", [])
     if not cfg or not cfg.get("captcha_on", False):
         return await message.reply_text("⚠️ That handle is not currently protected.")
 
-    banned_ids = cfg.get("banned_tgids", [])
-    if user_id in banned_ids:
+    if user_id in cfg["banned_tgids"]:
         return await message.reply_text(
-            "🍑 **Fuck you** — you are banned from accessing this channel."
+            "🍑 **ALRIGHT, MOTHERFUCKER** — you are banned from accessing this channel. **GET OUTTTTTT** 🗣"
         )
 
     now = datetime.utcnow()
