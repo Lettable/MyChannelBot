@@ -56,6 +56,13 @@ async def select_chat(_, query: CallbackQuery):
 async def back_to_config(client: Client, query: CallbackQuery):
     await config_handler(client, query.message)
 
+def generate_telegram_link(chat_id):
+    chat_id_str = str(chat_id)
+    if chat_id_str.startswith("-100"):
+        chat_id_str = chat_id_str[4:]
+
+    link = f"t.me/{app.me.username}?start=c{chat_id_str}"
+    return link
 
 @app.on_callback_query(filters.regex(r"^captcha_on_(-?\d+)$"))
 async def captcha_on(client: Client, query: CallbackQuery):
@@ -71,9 +78,12 @@ async def captcha_on(client: Client, query: CallbackQuery):
         upsert=True
     )
     await query.answer("✅ Captcha enabled")
-    # await query.edit_message_text(
-    #     f"✅ Captcha has been enabled for {(await app.get_chat(chat_id)).title or chat_id}"
-    # )
+    await query.edit_message_text(
+        f"✅ Captcha is now enabled for: {(await app.get_chat(chat_id)).title or chat_id}\n\n"
+        f"🔹 CHAT ID: `{chat_id}`\n"
+        f"🔗 LINK: {generate_telegram_link(chat_id)}\n\n"
+        f"⚠️ Share this link with users who want to join, instead of the actual group/channel link."
+    )
 
 
 @app.on_callback_query(filters.regex(r"^captcha_off_(-?\d+)$"))
