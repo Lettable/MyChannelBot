@@ -175,8 +175,7 @@ def callback():
                 f"User: {mirza.mention}\n"
                 f"IP: `{ip_address}`\n"
                 f"Invite: `{link}`\n"
-                f"Time: {datetime.utcnow().isoformat()}",
-                parse_mode="markdown"
+                f"Time: {datetime.utcnow().isoformat()}"
             )
         except Exception as e:
             print(f"Error sending notification: {e}")
