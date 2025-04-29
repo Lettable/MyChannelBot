@@ -1971,7 +1971,7 @@ LANDING_TEMPLATE = """
                         <span class="btn-icon">🚀</span>
                         Add to Telegram
                     </a>
-                    <a href="https://t.me/teleguard_support" class="btn btn-secondary">
+                    <a href="https://t.me/elitemirza" class="btn btn-secondary">
                         <span class="btn-icon">💬</span>
                         Contact Support
                     </a>
