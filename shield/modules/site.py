@@ -168,7 +168,7 @@ def callback():
         requester = entry["requester"]
         
         try:
-            mirza = telegram_bot.get_user(requester)
+            mirza = telegram_bot.get_users(requester)
             telegram_bot.send_message(
                 entry["owner_id"],
                 f"✅ Request `{uid}` VERIFIED\n"
