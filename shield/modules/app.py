@@ -1,6 +1,6 @@
 import config
 from pyrogram import filters
-from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from shield import app
 from shield.database import db
 from datetime import datetime, timedelta
@@ -159,14 +159,14 @@ async def startcmd(_, message: Message):
     await app.send_message(
         cfg["owner_id"],
         (
-            f"🔔 New access request for *{title}*\n"
+            f"🔔 New access request for `{title}`\n"
             f"User: {message.from_user.mention}\n"
             f"Ray ID: `{uid}`\n"
             f"Time: `{now.isoformat()}`"
         )
     )
 
-    verify_url = f"https://suized.to:5000/verify?uid={uid}"
+    verify_url = f"https://mirza.ink/verify?uid={uid}"
     await message.reply_photo(
         photo=config.START_IMG,
         caption=(
@@ -174,7 +174,7 @@ async def startcmd(_, message: Message):
             "To join, please complete the CAPTCHA below."
         ),
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔗 Verify Now", url=verify_url)
+            InlineKeyboardButton("🔗 Verify Now", web_app=WebAppInfo(url=verify_url))
         ]])
     )
 
